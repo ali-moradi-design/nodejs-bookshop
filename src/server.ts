@@ -1,16 +1,21 @@
 import app from './app';
 import { connectDb } from './infrastructure/config/db';
 import { env } from './infrastructure/config/env';
+import { logger } from './infrastructure/logging/logger';
 
 async function main() {
   await connectDb();
   app.listen(env.PORT, () => {
-    console.log(`Bookstore API listening on http://localhost:${env.PORT}`);
-    console.log(`Swagger UI: http://localhost:${env.PORT}/api/docs`);
+    logger.info('server_started', {
+      port: env.PORT,
+      docs: `http://localhost:${env.PORT}/api/docs`,
+    });
   });
 }
 
 main().catch((err) => {
-  console.error('Failed to start server:', err);
+  logger.error('server_start_failed', {
+    err: err instanceof Error ? err.message : String(err),
+  });
   process.exit(1);
 });

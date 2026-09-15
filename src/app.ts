@@ -2,15 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { env } from './infrastructure/config/env';
 import { openApiSpec } from './interfaces/http/docs/openapi';
 import { errorHandler, notFoundHandler } from './interfaces/http/middleware/errorHandler';
-import apiV1Routes from './interfaces/http/routes';
+import { requestIdMiddleware } from './interfaces/http/middleware/requestId';
+import { globalRateLimiter } from './interfaces/http/middleware/security/rate-limit';
+import apiV1Routes from './interfaces/http/v1/routes';
 
 const app = express();
 
+app.use(requestIdMiddleware);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(
   cors({
@@ -24,14 +26,7 @@ if (env.NODE_ENV !== 'test') {
 }
 
 if (env.NODE_ENV !== 'test') {
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 300,
-      standardHeaders: true,
-      legacyHeaders: false,
-    }),
-  );
+  app.use(globalRateLimiter);
 }
 
 app.get('/api/health', (_req, res) => {

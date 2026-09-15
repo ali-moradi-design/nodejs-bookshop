@@ -24,4 +24,28 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
+  {
+    files: ['src/domain/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/infrastructure/**', '@infrastructure/*', '@infrastructure/**'],
+              message: 'Domain must not import infrastructure',
+            },
+            {
+              group: ['**/interfaces/**', '@interfaces/*', '@interfaces/**'],
+              message: 'Domain must not import interfaces',
+            },
+            {
+              group: ['express', 'express/*', 'mongoose', 'mongoose/*'],
+              message: 'Domain must not import express or mongoose',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

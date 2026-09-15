@@ -1,13 +1,11 @@
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-import { env } from '../../../infrastructure/config/env';
 import { AppError } from '../../../shared/AppError';
+import { storage } from '../../../infrastructure/composition';
 
-const booksDir = path.join(env.UPLOAD_DIR_ABS, 'books');
-fs.mkdirSync(booksDir, { recursive: true });
+const booksDir = storage.absoluteDir('books');
 
-const storage = multer.diskStorage({
+const disk = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, booksDir);
   },
@@ -24,7 +22,7 @@ const storage = multer.diskStorage({
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 export const bookCoverUpload = multer({
-  storage,
+  storage: disk,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED.has(file.mimetype)) {

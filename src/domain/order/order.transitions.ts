@@ -1,4 +1,4 @@
-import { AppError } from '../../shared/AppError';
+import { DomainError } from '../shared/DomainError';
 import type { OrderStatus } from './order.entity';
 
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -14,6 +14,18 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 export function assertTransition(from: OrderStatus, to: OrderStatus): void {
   const allowed = ALLOWED_TRANSITIONS[from] ?? [];
   if (!allowed.includes(to)) {
-    throw new AppError(`Illegal status transition: ${from} → ${to}`, 400);
+    throw new DomainError(
+      `Illegal status transition: ${from} → ${to}`,
+      'ILLEGAL_TRANSITION',
+      { from, to },
+    );
   }
+}
+
+export function canCancel(status: OrderStatus): boolean {
+  return ['pending_payment', 'paid', 'processing'].includes(status);
+}
+
+export function shouldRestockOnCancel(status: OrderStatus): boolean {
+  return ['paid', 'processing'].includes(status);
 }

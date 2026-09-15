@@ -8,33 +8,36 @@ Node.js + TypeScript + Express + Mongoose backend with JWT auth, RBAC, books, re
 
 ```
 src/
-  domain/           # Entities, enums, repository interfaces (no Express/Mongoose)
-  application/      # Use-cases / services, ports (auth tokens, password hashing)
-  infrastructure/   # Mongoose models + repos, JWT/bcrypt, env/db, composition root
-  interfaces/http/  # Controllers, routes, Zod validators, middleware, OpenAPI
-  shared/           # AppError, asyncHandler, pagination helpers
-  scripts/seed.ts
-  app.ts            # Express app wiring
-  server.ts         # Process entry
+  domain/              # Entities, ports, pure rules, VOs, DomainError, events
+  application/         # Services, focused use-cases, DTOs, application ports
+  infrastructure/      # Mongoose, storage, logger, notifier, composition/
+  interfaces/http/
+    v1/                # Controllers, routes, validators, presenters
+    middleware/        # Errors, upload, request id, security/
+    docs/modules/      # Split OpenAPI path files
+  shared/              # AppError, Domain→HTTP map, asyncHandler, pagination
+  scripts/seed.ts      # Seed stays here (see docs/architecture.md)
+  app.ts
+  server.ts
 ```
 
-- **Domain** does not import Express or Mongoose.
-- Controllers call **application** services; services depend on **repository interfaces** implemented under `infrastructure/persistence/mongoose`.
-- Wiring lives in `infrastructure/composition.ts`.
+- **Domain** must not import Express, Mongoose, infrastructure, or interfaces (ESLint boundary rules).
+- Controllers call **application** services / use-cases; services depend on **domain repository ports**.
+- Wiring: `infrastructure/composition/` (`repos`, `infra`, `services`).
+- Details: [docs/architecture.md](docs/architecture.md) · [docs/modules.md](docs/modules.md)
 
 ## Stack
 
 - Express 5, Mongoose, Zod, Helmet, express-rate-limit, multer
 - bcryptjs, jsonwebtoken, dotenv, cors, morgan
 - swagger-ui-express (OpenAPI at `/api/docs`)
-- ESLint + Prettier, tsx for dev
-- Vitest + supertest + mongodb-memory-server (integration tests)
+- ESLint + Prettier, tsx for dev, tsc-alias for path aliases
+- Vitest + supertest + mongodb-memory-server (Mongo binary pinned to **7.0.14**)
 
 ## Setup
 
 ```bash
 cp .env.example .env
-# edit secrets if needed
 npm install
 # start MongoDB locally (mongodb://127.0.0.1:27017/bookstore)
 npm run seed
@@ -46,49 +49,31 @@ Default admin (from seed):
 - Email: `admin@bookstore.local`
 - Password: `Admin123!`
 
-Sample discount codes from seed: `WELCOME10` (10% off, min $20), `FLAT5` ($5 off, min $15).
+Sample discount codes: `WELCOME10` (10% off, min $20), `FLAT5` ($5 off, min $15).
 
-## Seed & cover images
+## Docker
 
-`npm run seed` upserts:
-
-- Permissions (incl. `discounts:*`, `admin:dashboard`), `admin` / `customer` roles, and the admin user
-- **Exactly 40 books**, each with a `coverImageUrl` pointing at Open Library:
-  `https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg`
-- **~6 featured books** (`featured: true` + `featuredOrder`)
-- Sample discount codes
-
-Books are upserted by **ISBN** (idempotent; re-runs do not duplicate endlessly).
-
-## Book search
-
-`GET /api/v1/books` supports:
-
-| Param | Description |
-|-------|-------------|
-| `q` | Case-insensitive **regex** on title, author, description (partial matches). A MongoDB **text index** is also defined on those fields for future `$text` use. |
-| `category` | Match category tag |
-| `minPrice` / `maxPrice` | Price range |
-| `inStock` | `true` / `false` |
-| `featured` | `true` / `false` |
-| `sort` | `price` \| `title` \| `createdAt` |
-| `order` | `asc` \| `desc` |
-| `page` / `limit` | Pagination |
-
-Dedicated: `GET /api/v1/books/featured`.
+```bash
+docker build -t nodejs-bookshop .
+docker run --rm -p 4000:4000 --env-file .env nodejs-bookshop
+```
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
 | `npm run dev` | tsx watch |
-| `npm run build` | compile to `dist/` |
+| `npm run build` | `tsc` + `tsc-alias` |
 | `npm start` | run compiled server |
-| `npm run lint` | ESLint |
+| `npm run lint` | ESLint (src + tests) |
 | `npm run format` | Prettier |
 | `npm run seed` | permissions, roles, admin, 40 imaged books, discounts |
-| `npm test` | Vitest + supertest integration suite (in-memory MongoDB) |
-| `npm run test:watch` | Vitest watch mode |
+| `npm test` | unit + integration (Vitest) |
+| `npm run test:watch` | Vitest watch |
+
+## Path aliases
+
+`@domain/*`, `@application/*`, `@infrastructure/*`, `@interfaces/*`, `@shared/*` (tsconfig + Vitest + tsc-alias).
 
 ## Key routes
 
@@ -99,119 +84,61 @@ Dedicated: `GET /api/v1/books/featured`.
 | GET | `/api/health` | health |
 | GET | `/api/docs` | Swagger UI |
 | GET | `/api/docs.json` | OpenAPI JSON |
-| GET | `/uploads/...` | static uploaded files |
 
-### `/api/v1` business API
+### Auth — `/api/v1/auth`
 
-| Method | Path | Notes |
-|--------|------|-------|
-| POST | `/api/v1/auth/register` | customer role |
-| POST | `/api/v1/auth/login` | access + refresh |
-| POST | `/api/v1/auth/refresh` | rotate refresh |
-| POST | `/api/v1/auth/logout` | revoke refresh |
-| CRUD | `/api/v1/permissions` | RBAC |
-| CRUD | `/api/v1/roles` | assign permissions |
-| CRUD | `/api/v1/users` | assign roles; `GET /me` |
-| CRUD | `/api/v1/books` | list/get public; mutations need perms |
-| GET | `/api/v1/books/featured` | public featured list |
-| CRUD | `/api/v1/reviews` | multiple reviews per user/book allowed |
-| POST | `/api/v1/orders` | create → `pending_payment` (optional `discountCode`) |
-| POST | `/api/v1/orders/:id/pay` | fake pay + atomic stock |
-| PATCH | `/api/v1/orders/:id/status` | staff status transitions |
-| GET/POST/PATCH/DELETE | `/api/v1/cart` (+ `/items`, `/checkout`) | auth cart; checkout needs `orders:create` |
-| GET/POST/DELETE | `/api/v1/favorites` | wishlist |
-| CRUD | `/api/v1/discounts` | admin discount codes |
-| POST | `/api/v1/uploads/book-cover` | multipart `file` → `{ url }` |
-| CRUD | `/api/v1/reports/issues` | user create / staff manage |
-| GET | `/api/v1/reports/analytics/*` | revenue, status, top books, sales by date |
-| GET | `/api/v1/admin/dashboard/summary` | counts (needs `admin:dashboard` or `reports:analytics`) |
-| GET | `/api/v1/admin/dashboard/recent-orders` | `?limit=` |
-| GET | `/api/v1/admin/dashboard/low-stock` | `?threshold=5` |
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/register` | public |
+| POST | `/login` | public |
+| POST | `/refresh` | public |
+| POST | `/logout` | public |
 
-## Curl examples
+### Books — `/api/v1/books`
 
-```bash
-# Login as admin
-curl -s -X POST http://localhost:4000/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@bookstore.local","password":"Admin123!"}'
+| Method | Path | Auth |
+|--------|------|------|
+| GET | `/` | public (search/filter) |
+| GET | `/featured` | public |
+| GET | `/:id` | public |
+| POST / PATCH / DELETE | `/`, `/:id` | staff permissions |
 
-export TOKEN=...
+### Cart — `/api/v1/cart`
 
-# List / search books
-curl -s 'http://localhost:4000/api/v1/books?q=clean&sort=price&order=asc'
-curl -s http://localhost:4000/api/v1/books/featured
+| Method | Path | Auth |
+|--------|------|------|
+| GET | `/` | bearer |
+| POST | `/items` | bearer |
+| PATCH / DELETE | `/items/:bookId` | bearer |
+| DELETE | `/` | clear |
+| POST | `/checkout` | `orders:create` |
 
-# Upload cover
-curl -s -X POST http://localhost:4000/api/v1/uploads/book-cover \
-  -H "Authorization: Bearer $TOKEN" \
-  -F 'file=@./cover.jpg'
+### Orders — `/api/v1/orders`
 
-# Cart + checkout
-curl -s -X POST http://localhost:4000/api/v1/cart/items \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"bookId":"BOOK_ID","quantity":1}'
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/` | `orders:create` |
+| GET | `/` | own or all |
+| GET | `/:id` | own or all |
+| POST | `/:id/pay` | owner / staff |
+| PATCH | `/:id/status` | `orders:update-status` |
 
-curl -s -X POST http://localhost:4000/api/v1/cart/checkout \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"shippingAddress":{"fullName":"Jane","line1":"1 Main","city":"Tehran","postalCode":"1000","country":"IR"},"discountCode":"WELCOME10"}'
+Also: favorites, discounts, reviews, users, roles, permissions, reports, uploads, admin dashboard — see Swagger.
 
-# Favorites
-curl -s -X POST http://localhost:4000/api/v1/favorites \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"bookId":"BOOK_ID"}'
+## Seed & cover images
 
-# Admin dashboard
-curl -s http://localhost:4000/api/v1/admin/dashboard/summary \
-  -H "Authorization: Bearer $TOKEN"
-```
+`npm run seed` upserts permissions, roles, admin, **40 books** with Open Library covers, featured flags, and sample discounts (idempotent by ISBN).
 
+## Book search
 
-## Testing
+`GET /api/v1/books` supports `q`, `category`, `minPrice`/`maxPrice`, `inStock`, `featured`, `sort`, `order`, `page`/`limit`. Dedicated: `GET /api/v1/books/featured`.
 
-Integration tests use **Vitest**, **supertest**, and **mongodb-memory-server** (no local Mongo required).
+## Tests & CI
 
-```bash
-npm test
-# or
-npm run test:watch
-```
+- Unit: `tests/unit/` (domain rules + key use-cases)
+- Integration: `tests/integration/` (supertest + MongoMemoryServer **7.0.14**)
+- GitHub Actions: `.github/workflows/ci.yml` (lint, build, test)
 
-The suite boots an in-memory MongoDB, runs a minimal seed (permissions, roles, admin, a few books, `WELCOME10`), and exercises HTTP flows against the real Express app (`src/app.ts`). JWT secrets and other env vars are set in `tests/setup-env.ts` — do not rely on `.env` for CI.
+## License
 
-## Env
-
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `UPLOAD_DIR` | `uploads` | Local directory for multer storage; served at `/uploads` |
-
-## Notes
-
-- Access JWT is short-lived; refresh tokens are SHA-256 hashed in `RefreshToken` with rotation on refresh.
-- Soft-deleted documents (`deletedAt`) are excluded from default queries.
-- Order payment uses per-item stock decrement with `$gte` so stock cannot go negative; on failure the order moves to `failed` and any decrements are rolled back.
-- Orders store `subtotalAmount`, `discountCode`, `discountAmount`, and `totalAmount`.
-- Uploaded files land in `uploads/books/` (gitignored).
-
-Integration tests use **Vitest**, **supertest**, and **mongodb-memory-server** (no local Mongo required for most setups).
-
-The memory-server binary is pinned to **MongoDB 7.0.14** (the default 8.2.x build is missing on Windows and returns HTTP 403).
-
-```bash
-npm test
-```
-
-Optional overrides:
-
-```bash
-# force a different memory-server binary
-set MONGOMS_VERSION=7.0.14
-npm test
-
-# or use your installed MongoDB instead of downloading a binary
-set TEST_MONGODB_URI=mongodb://127.0.0.1:27017/bookstore-test
-npm test
-```
+MIT
