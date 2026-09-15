@@ -1,6 +1,6 @@
 import app from './app';
-import { connectDb } from './config/db';
-import { env } from './config/env';
+import { connectDb } from './infrastructure/config/db';
+import { env } from './infrastructure/config/env';
 
 async function main() {
   await connectDb();

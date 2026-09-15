@@ -2,6 +2,24 @@
 
 Node.js + TypeScript + Express + Mongoose backend with JWT auth, RBAC, books, reviews, orders (fake payments + stock), and reports/analytics.
 
+## Architecture (DDD-inspired layers)
+
+```
+src/
+  domain/           # Entities, enums, repository interfaces (no Express/Mongoose)
+  application/      # Use-cases / services, ports (auth tokens, password hashing)
+  infrastructure/   # Mongoose models + repos, JWT/bcrypt, env/db, composition root
+  interfaces/http/  # Controllers, routes, Zod validators, middleware, OpenAPI
+  shared/           # AppError, asyncHandler, pagination helpers
+  scripts/seed.ts
+  app.ts            # Express app wiring
+  server.ts         # Process entry
+```
+
+- **Domain** does not import Express or Mongoose.
+- Controllers call **application** services; services depend on **repository interfaces** implemented under `infrastructure/persistence/mongoose`.
+- Wiring lives in `infrastructure/composition.ts`.
+
 ## Stack
 
 - Express 5, Mongoose, Zod, Helmet, express-rate-limit
@@ -25,6 +43,16 @@ Default admin (from seed):
 - Email: `admin@bookstore.local`
 - Password: `Admin123!`
 
+## Seed & cover images
+
+`npm run seed` upserts:
+
+- Permissions, `admin` / `customer` roles, and the admin user
+- **Exactly 40 books**, each with a `coverImageUrl` pointing at Open Library:
+  `https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg`
+
+Books are upserted by **ISBN** (idempotent; re-runs do not duplicate endlessly).
+
 ## Scripts
 
 | Script | Description |
@@ -34,7 +62,7 @@ Default admin (from seed):
 | `npm start` | run compiled server |
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier |
-| `npm run seed` | permissions, roles, admin, sample books |
+| `npm run seed` | permissions, roles, admin, 40 imaged books |
 
 ## Key routes
 
@@ -73,7 +101,7 @@ curl -s http://localhost:4000/api/books
 curl -s -X POST http://localhost:4000/api/books \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"title":"Demo","author":"A","description":"D","price":9.99,"stock":10}'
+  -d '{"title":"Demo","author":"A","description":"D","price":9.99,"stock":10,"coverImageUrl":"https://covers.openlibrary.org/b/isbn/9780141439518-L.jpg"}'
 
 # Register customer
 curl -s -X POST http://localhost:4000/api/auth/register \
@@ -95,4 +123,4 @@ curl -s -X POST http://localhost:4000/api/orders/ORDER_ID/pay \
 
 - Access JWT is short-lived; refresh tokens are SHA-256 hashed in `RefreshToken` with rotation on refresh.
 - Soft-deleted documents (`deletedAt`) are excluded from default queries.
-- Order payment uses per-item `updateOne({ stock: { $gte: qty } })` so stock cannot go negative; on failure the order moves to `failed` and any decrements are rolled back.
+- Order payment uses per-item stock decrement with `$gte` so stock cannot go negative; on failure the order moves to `failed` and any decrements are rolled back.

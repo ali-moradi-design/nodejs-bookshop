@@ -4,18 +4,10 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
-import { env } from './config/env';
-import { openApiSpec } from './docs/openapi';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-
-import authRoutes from './modules/auth/auth.routes';
-import permissionsRoutes from './modules/permissions/permissions.routes';
-import rolesRoutes from './modules/roles/roles.routes';
-import usersRoutes from './modules/users/users.routes';
-import booksRoutes from './modules/books/books.routes';
-import reviewsRoutes from './modules/reviews/reviews.routes';
-import ordersRoutes from './modules/orders/orders.routes';
-import reportsRoutes from './modules/reports/reports.routes';
+import { env } from './infrastructure/config/env';
+import { openApiSpec } from './interfaces/http/docs/openapi';
+import { errorHandler, notFoundHandler } from './interfaces/http/middleware/errorHandler';
+import apiRoutes from './interfaces/http/routes';
 
 const app = express();
 
@@ -47,14 +39,7 @@ app.get('/api/docs.json', (_req, res) => {
   res.json(openApiSpec);
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/permissions', permissionsRoutes);
-app.use('/api/roles', rolesRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/books', booksRoutes);
-app.use('/api/reviews', reviewsRoutes);
-app.use('/api/orders', ordersRoutes);
-app.use('/api/reports', reportsRoutes);
+app.use('/api', apiRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
