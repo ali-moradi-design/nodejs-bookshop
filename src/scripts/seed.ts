@@ -2,7 +2,7 @@ import { connectDb } from '../infrastructure/config/db';
 import { repos } from '../infrastructure/composition';
 import { BcryptPasswordHasher } from '../infrastructure/security/password.service';
 
-const SECTIONS = ['books', 'users', 'roles', 'permissions', 'orders', 'reviews', 'reports'] as const;
+const SECTIONS = ['books', 'users', 'roles', 'permissions', 'orders', 'reviews', 'reports', 'discounts'] as const;
 const CRUD = ['create', 'read', 'update', 'delete'] as const;
 
 function basePermissions() {
@@ -29,6 +29,7 @@ function basePermissions() {
     { slug: 'reports:analytics', name: 'reports analytics', description: 'View analytics', section: 'reports' },
     { slug: 'reports:manage', name: 'reports manage', description: 'Manage issue reports', section: 'reports' },
     { slug: 'reports:issues:create', name: 'reports issues create', description: 'Create issue reports', section: 'reports' },
+    { slug: 'admin:dashboard', name: 'admin dashboard', description: 'Access admin dashboard endpoints', section: 'admin' },
   ];
 
   return [...perms, ...extras];
@@ -53,6 +54,15 @@ function coverUrl(isbn: string): string {
 }
 
 /** 40 distinct books with real/public ISBNs for Open Library covers */
+const FEATURED_ISBNS = new Set([
+  '9780201616224', // The Pragmatic Programmer
+  '9780132350884', // Clean Code
+  '9781449373320', // DDIA
+  '9780062316097', // Sapiens
+  '9780547928227', // The Hobbit
+  '9780441172719', // Dune
+]);
+
 const SEED_BOOKS: {
   title: string;
   author: string;
@@ -478,16 +488,47 @@ async function seed() {
     throw new Error(`Expected exactly 40 seed books, got ${SEED_BOOKS.length}`);
   }
 
+  let featuredOrder = 1;
   for (const b of SEED_BOOKS) {
+    const featured = FEATURED_ISBNS.has(b.isbn);
     await repos.books.upsertByIsbn(b.isbn, {
       ...b,
       coverImageUrl: coverUrl(b.isbn),
       currency: 'USD',
+      featured,
+      featuredOrder: featured ? featuredOrder++ : 0,
     });
   }
 
   const bookCount = await repos.books.count();
-  console.log(`Books upserted by ISBN: ${SEED_BOOKS.length} (catalog count: ${bookCount})`);
+  console.log(`Books upserted by ISBN: ${SEED_BOOKS.length} (catalog count: ${bookCount}); featured: ${FEATURED_ISBNS.size}`);
+
+  // Sample discount codes
+  const sampleDiscounts = [
+    {
+      code: 'WELCOME10',
+      type: 'percent' as const,
+      value: 10,
+      minOrderAmount: 20,
+      maxUses: 1000,
+      isActive: true,
+    },
+    {
+      code: 'FLAT5',
+      type: 'fixed' as const,
+      value: 5,
+      minOrderAmount: 15,
+      maxUses: 500,
+      isActive: true,
+    },
+  ];
+  for (const d of sampleDiscounts) {
+    const existing = await repos.discounts.findByCode(d.code);
+    if (!existing) {
+      await repos.discounts.create(d);
+    }
+  }
+  console.log('Sample discounts: WELCOME10 (10%), FLAT5 ($5)');
 
   console.log('Seed complete.');
   process.exit(0);

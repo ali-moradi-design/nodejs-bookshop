@@ -6,4 +6,7 @@ export { MongoosePermissionRepository } from './PermissionRepository';
 export { MongooseRoleRepository } from './RoleRepository';
 export { MongooseRefreshTokenRepository } from './RefreshTokenRepository';
 export { MongooseIssueReportRepository } from './IssueReportRepository';
+export { MongooseCartRepository } from './CartRepository';
+export { MongooseFavoriteRepository } from './FavoriteRepository';
+export { MongooseDiscountRepository } from './DiscountRepository';
 export * from './models';

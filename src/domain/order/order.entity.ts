@@ -44,6 +44,11 @@ export interface Order {
   id: string;
   user: string;
   items: OrderItem[];
+  /** Subtotal before discount */
+  subtotalAmount: number;
+  discountCode?: string;
+  discountAmount: number;
+  /** Final amount after discount */
   totalAmount: number;
   status: OrderStatus;
   payment: Payment;
@@ -57,6 +62,9 @@ export interface Order {
 export interface CreateOrderInput {
   userId: string;
   items: OrderItem[];
+  subtotalAmount: number;
+  discountCode?: string;
+  discountAmount?: number;
   totalAmount: number;
   shippingAddress: ShippingAddress;
 }

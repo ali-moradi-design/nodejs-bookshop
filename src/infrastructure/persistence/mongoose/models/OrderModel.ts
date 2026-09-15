@@ -11,6 +11,9 @@ export interface IOrderItemDoc {
 export interface IOrderDoc extends Document {
   user: Types.ObjectId;
   items: IOrderItemDoc[];
+  subtotalAmount: number;
+  discountCode?: string;
+  discountAmount: number;
   totalAmount: number;
   status: OrderStatus;
   payment: {
@@ -52,6 +55,9 @@ const orderSchema = new Schema<IOrderDoc>(
       required: true,
       validate: [(v: IOrderItemDoc[]) => v.length > 0, 'Order needs items'],
     },
+    subtotalAmount: { type: Number, required: true, min: 0, default: 0 },
+    discountCode: { type: String, uppercase: true, trim: true },
+    discountAmount: { type: Number, default: 0, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
     status: { type: String, enum: ORDER_STATUSES, default: 'pending_payment' },
     payment: {

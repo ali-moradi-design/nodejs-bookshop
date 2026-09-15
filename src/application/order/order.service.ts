@@ -5,6 +5,7 @@ import type {
   OrderStatus,
   ShippingAddress,
 } from '../../domain/order/order.entity';
+import type { DiscountService } from '../discount/discount.service';
 import { assertTransition } from '../../domain/order/order.transitions';
 import { AppError } from '../../shared/AppError';
 
@@ -12,12 +13,14 @@ export class OrderService {
   constructor(
     private readonly orders: IOrderRepository,
     private readonly books: IBookRepository,
+    private readonly discounts?: DiscountService,
   ) {}
 
   async create(
     userId: string,
     items: { book: string; quantity: number }[],
     shippingAddress: ShippingAddress,
+    discountCode?: string,
   ): Promise<Order> {
     const bookIds = items.map((i) => i.book);
     const books = await this.books.findByIds(bookIds);
@@ -28,6 +31,9 @@ export class OrderService {
     const bookMap = new Map(books.map((b) => [b.id, b]));
     const orderItems = items.map((item) => {
       const book = bookMap.get(item.book)!;
+      if (book.stock < item.quantity) {
+        throw new AppError(`Insufficient stock for "${book.title}"`, 409);
+      }
       return {
         book: book.id,
         title: book.title,
@@ -36,14 +42,39 @@ export class OrderService {
       };
     });
 
-    const totalAmount = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const subtotalAmount =
+      Math.round(orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * 100) / 100;
 
-    return this.orders.create({
+    let discountAmount = 0;
+    let appliedCode: string | undefined;
+    let discountId: string | undefined;
+
+    if (this.discounts) {
+      const result = await this.discounts.computeDiscount(discountCode, subtotalAmount);
+      discountAmount = result.discountAmount;
+      appliedCode = result.discount?.code;
+      discountId = result.discount?.id;
+    } else if (discountCode) {
+      throw new AppError('Discount codes are not available', 400);
+    }
+
+    const totalAmount = Math.max(0, Math.round((subtotalAmount - discountAmount) * 100) / 100);
+
+    const order = await this.orders.create({
       userId,
       items: orderItems,
+      subtotalAmount,
+      discountCode: appliedCode,
+      discountAmount,
       totalAmount,
       shippingAddress,
     });
+
+    if (discountId && this.discounts) {
+      await this.discounts.recordUse(discountId);
+    }
+
+    return order;
   }
 
   async pay(orderId: string, userId: string, isStaff: boolean): Promise<Order> {

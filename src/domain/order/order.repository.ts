@@ -2,7 +2,7 @@ import type { Order, CreateOrderInput, OrderStatus, Payment } from './order.enti
 
 export interface IOrderRepository {
   findById(id: string): Promise<Order | null>;
-  list(filter: { userId?: string }): Promise<Order[]>;
+  list(filter: { userId?: string; limit?: number }): Promise<Order[]>;
   create(input: CreateOrderInput): Promise<Order>;
   save(order: Order): Promise<Order>;
   updateStatus(
@@ -11,6 +11,7 @@ export interface IOrderRepository {
     payment?: Partial<Payment>,
     note?: string,
   ): Promise<Order | null>;
+  count(): Promise<number>;
   aggregateRevenue(match: Record<string, unknown>): Promise<{
     totalRevenue: number;
     orderCount: number;

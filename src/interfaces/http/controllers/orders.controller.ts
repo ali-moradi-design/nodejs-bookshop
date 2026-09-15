@@ -7,6 +7,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     req.user!.id,
     req.body.items,
     req.body.shippingAddress,
+    req.body.discountCode,
   );
   res.status(201).json({ data: order });
 });

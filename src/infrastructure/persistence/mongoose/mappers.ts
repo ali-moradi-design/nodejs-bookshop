@@ -6,6 +6,9 @@ import type { Permission } from '../../../domain/rbac/permission.entity';
 import type { Role } from '../../../domain/rbac/role.entity';
 import type { IssueReport } from '../../../domain/report/report.entity';
 import type { RefreshTokenRecord } from '../../../domain/auth/auth.types';
+import type { Cart } from '../../../domain/cart/cart.entity';
+import type { Favorite } from '../../../domain/favorite/favorite.entity';
+import type { Discount } from '../../../domain/discount/discount.entity';
 
 function idOf(doc: { id?: string; _id?: { toString(): string } }): string {
   return doc.id ?? doc._id!.toString();
@@ -23,6 +26,8 @@ export function mapBook(doc: {
   stock: number;
   coverImageUrl?: string;
   categories?: string[];
+  featured?: boolean;
+  featuredOrder?: number;
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -38,6 +43,8 @@ export function mapBook(doc: {
     stock: doc.stock,
     coverImageUrl: doc.coverImageUrl,
     categories: doc.categories,
+    featured: Boolean(doc.featured),
+    featuredOrder: doc.featuredOrder,
     deletedAt: doc.deletedAt,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -85,6 +92,9 @@ export function mapOrder(doc: {
     price: number;
     quantity: number;
   }[];
+  subtotalAmount?: number;
+  discountCode?: string;
+  discountAmount?: number;
   totalAmount: number;
   status: Order['status'];
   payment: Order['payment'];
@@ -100,10 +110,15 @@ export function mapOrder(doc: {
     price: i.price,
     quantity: i.quantity,
   }));
+  const discountAmount = doc.discountAmount ?? 0;
+  const subtotalAmount = doc.subtotalAmount ?? doc.totalAmount + discountAmount;
   return {
     id: idOf(doc),
     user: doc.user.toString(),
     items,
+    subtotalAmount,
+    discountCode: doc.discountCode,
+    discountAmount,
     totalAmount: doc.totalAmount,
     status: doc.status,
     payment: doc.payment,
@@ -289,5 +304,102 @@ export function mapRefreshToken(doc: {
     expiresAt: doc.expiresAt,
     revokedAt: doc.revokedAt,
     replacedByHash: doc.replacedByHash,
+  };
+}
+
+export function mapCart(doc: {
+  id?: string;
+  _id?: { toString(): string };
+  userId: { toString(): string };
+  items: { bookId: { toString(): string }; quantity: number }[];
+  createdAt: Date;
+  updatedAt: Date;
+}): Cart {
+  return {
+    id: idOf(doc),
+    userId: doc.userId.toString(),
+    items: doc.items.map((i) => ({
+      bookId: i.bookId.toString(),
+      quantity: i.quantity,
+    })),
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+export function mapFavorite(doc: {
+  id?: string;
+  _id?: { toString(): string };
+  userId: { toString(): string };
+  bookId: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}): Favorite {
+  const bookObj = doc.bookId as {
+    _id?: { toString(): string };
+    id?: string;
+    title?: string;
+    author?: string;
+    price?: number;
+    coverImageUrl?: string;
+    toString?: () => string;
+  };
+  const bookId =
+    bookObj && typeof bookObj === 'object' && (bookObj._id || bookObj.id)
+      ? (bookObj.id ?? bookObj._id!.toString())
+      : String(doc.bookId);
+
+  const fav: Favorite = {
+    id: idOf(doc),
+    userId: doc.userId.toString(),
+    bookId,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+
+  if (bookObj?.title) {
+    fav.populated = {
+      book: {
+        id: bookId,
+        title: bookObj.title,
+        author: bookObj.author ?? '',
+        price: bookObj.price ?? 0,
+        coverImageUrl: bookObj.coverImageUrl,
+      },
+    };
+  }
+  return fav;
+}
+
+export function mapDiscount(doc: {
+  id?: string;
+  _id?: { toString(): string };
+  code: string;
+  type: Discount['type'];
+  value: number;
+  minOrderAmount?: number;
+  maxUses?: number;
+  usedCount: number;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
+  isActive: boolean;
+  deletedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): Discount {
+  return {
+    id: idOf(doc),
+    code: doc.code,
+    type: doc.type,
+    value: doc.value,
+    minOrderAmount: doc.minOrderAmount,
+    maxUses: doc.maxUses,
+    usedCount: doc.usedCount,
+    startsAt: doc.startsAt,
+    endsAt: doc.endsAt,
+    isActive: doc.isActive,
+    deletedAt: doc.deletedAt,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
   };
 }

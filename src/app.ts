@@ -7,11 +7,11 @@ import swaggerUi from 'swagger-ui-express';
 import { env } from './infrastructure/config/env';
 import { openApiSpec } from './interfaces/http/docs/openapi';
 import { errorHandler, notFoundHandler } from './interfaces/http/middleware/errorHandler';
-import apiRoutes from './interfaces/http/routes';
+import apiV1Routes from './interfaces/http/routes';
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(
   cors({
     origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(',').map((s) => s.trim()),
@@ -39,7 +39,9 @@ app.get('/api/docs.json', (_req, res) => {
   res.json(openApiSpec);
 });
 
-app.use('/api', apiRoutes);
+app.use('/uploads', express.static(env.UPLOAD_DIR_ABS));
+
+app.use('/api/v1', apiV1Routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

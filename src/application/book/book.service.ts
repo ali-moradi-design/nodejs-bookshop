@@ -17,6 +17,10 @@ export class BookService {
     return { data, meta: { page, limit, total, pages: Math.ceil(total / limit) } };
   }
 
+  async listFeatured(limit = 20): Promise<Book[]> {
+    return this.books.listFeatured(limit);
+  }
+
   async getById(id: string): Promise<Book> {
     const book = await this.books.findById(id);
     if (!book) throw new AppError('Book not found', 404);

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ORDER_STATUSES } from '../../../domain/order/order.entity';
 
-const shippingAddressSchema = z.object({
+export const shippingAddressSchema = z.object({
   fullName: z.string().min(1),
   line1: z.string().min(1),
   line2: z.string().optional(),
@@ -21,6 +21,7 @@ export const createOrderSchema = z.object({
     )
     .min(1),
   shippingAddress: shippingAddressSchema,
+  discountCode: z.string().min(1).max(50).optional(),
 });
 
 export const updateStatusSchema = z.object({

@@ -57,4 +57,8 @@ export class MongooseIssueReportRepository implements IIssueReportRepository {
     await doc.save();
     return mapIssue(doc);
   }
+
+  async countOpen(): Promise<number> {
+    return IssueReportModel.countDocuments({ status: 'open' });
+  }
 }

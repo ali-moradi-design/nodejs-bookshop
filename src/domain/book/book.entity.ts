@@ -9,6 +9,8 @@ export interface Book {
   stock: number;
   coverImageUrl?: string;
   categories?: string[];
+  featured: boolean;
+  featuredOrder?: number;
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -24,6 +26,8 @@ export interface CreateBookInput {
   stock?: number;
   coverImageUrl?: string;
   categories?: string[];
+  featured?: boolean;
+  featuredOrder?: number;
 }
 
 export type UpdateBookInput = Partial<CreateBookInput>;
@@ -31,6 +35,12 @@ export type UpdateBookInput = Partial<CreateBookInput>;
 export interface BookListFilter {
   q?: string;
   category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  featured?: boolean;
   page?: number;
   limit?: number;
+  sort?: 'price' | 'title' | 'createdAt';
+  order?: 'asc' | 'desc';
 }

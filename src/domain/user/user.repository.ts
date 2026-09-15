@@ -7,4 +7,5 @@ export interface IUserRepository {
   create(input: CreateUserInput): Promise<User>;
   update(id: string, input: UpdateUserInput): Promise<User | null>;
   softDelete(id: string): Promise<User | null>;
+  count(): Promise<number>;
 }

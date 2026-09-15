@@ -6,10 +6,21 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
   const result = await bookService.list({
     q: req.query.q as string | undefined,
     category: req.query.category as string | undefined,
+    minPrice: req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined,
+    maxPrice: req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined,
+    inStock: req.query.inStock as boolean | undefined,
+    featured: req.query.featured as boolean | undefined,
     page: Number(req.query.page) || 1,
     limit: Number(req.query.limit) || 20,
+    sort: (req.query.sort as 'price' | 'title' | 'createdAt') || 'createdAt',
+    order: (req.query.order as 'asc' | 'desc') || 'desc',
   });
   res.json(result);
+});
+
+export const listFeatured = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await bookService.listFeatured(20);
+  res.json({ data });
 });
 
 export const getById = asyncHandler(async (req: Request, res: Response) => {

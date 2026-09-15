@@ -75,4 +75,8 @@ export class MongooseUserRepository implements IUserRepository {
     );
     return doc ? mapUser(doc) : null;
   }
+
+  async count(): Promise<number> {
+    return UserModel.countDocuments();
+  }
 }

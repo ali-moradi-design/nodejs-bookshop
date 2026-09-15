@@ -6,3 +6,6 @@ export { PermissionModel } from './PermissionModel';
 export { RoleModel } from './RoleModel';
 export { RefreshTokenModel } from './RefreshTokenModel';
 export { IssueReportModel } from './IssueReportModel';
+export { CartModel } from './CartModel';
+export { FavoriteModel } from './FavoriteModel';
+export { DiscountModel } from './DiscountModel';

@@ -6,4 +6,5 @@ export interface IIssueReportRepository {
   create(input: CreateIssueInput): Promise<IssueReport>;
   update(id: string, input: UpdateIssueInput): Promise<IssueReport | null>;
   softDelete(id: string): Promise<IssueReport | null>;
+  countOpen(): Promise<number>;
 }

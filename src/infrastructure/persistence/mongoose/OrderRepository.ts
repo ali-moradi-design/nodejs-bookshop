@@ -14,14 +14,18 @@ export class MongooseOrderRepository implements IOrderRepository {
     return doc ? mapOrder(doc) : null;
   }
 
-  async list(filter: { userId?: string }): Promise<Order[]> {
+  async list(filter: { userId?: string; limit?: number }): Promise<Order[]> {
     const q: Record<string, unknown> = {};
     if (filter.userId) q.user = filter.userId;
-    const docs = await OrderModel.find(q).sort({ createdAt: -1 });
+    let query = OrderModel.find(q).sort({ createdAt: -1 });
+    if (filter.limit) query = query.limit(filter.limit);
+    const docs = await query;
     return docs.map(mapOrder);
   }
 
   async create(input: CreateOrderInput): Promise<Order> {
+    const discountAmount = input.discountAmount ?? 0;
+    const subtotalAmount = input.subtotalAmount;
     const doc = await OrderModel.create({
       user: input.userId,
       items: input.items.map((i) => ({
@@ -30,6 +34,9 @@ export class MongooseOrderRepository implements IOrderRepository {
         price: i.price,
         quantity: i.quantity,
       })),
+      subtotalAmount,
+      discountCode: input.discountCode,
+      discountAmount,
       totalAmount: input.totalAmount,
       status: 'pending_payment',
       payment: { method: 'fake', status: 'pending' },
@@ -45,6 +52,10 @@ export class MongooseOrderRepository implements IOrderRepository {
     doc.status = order.status;
     doc.payment = order.payment;
     doc.statusHistory = order.statusHistory;
+    doc.subtotalAmount = order.subtotalAmount;
+    doc.discountCode = order.discountCode;
+    doc.discountAmount = order.discountAmount;
+    doc.totalAmount = order.totalAmount;
     await doc.save();
     return mapOrder(doc);
   }
@@ -64,6 +75,10 @@ export class MongooseOrderRepository implements IOrderRepository {
     doc.statusHistory.push({ status, at: new Date(), note });
     await doc.save();
     return mapOrder(doc);
+  }
+
+  async count(): Promise<number> {
+    return OrderModel.countDocuments();
   }
 
   async aggregateRevenue(match: Record<string, unknown>) {

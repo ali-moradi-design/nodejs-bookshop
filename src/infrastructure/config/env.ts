@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import path from 'path';
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL: z.string().default('7d'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  UPLOAD_DIR: z.string().default('uploads'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -21,4 +23,11 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const env = parsed.data;
+const data = parsed.data;
+
+export const env = {
+  ...data,
+  UPLOAD_DIR_ABS: path.isAbsolute(data.UPLOAD_DIR)
+    ? data.UPLOAD_DIR
+    : path.resolve(process.cwd(), data.UPLOAD_DIR),
+};
