@@ -195,3 +195,23 @@ The suite boots an in-memory MongoDB, runs a minimal seed (permissions, roles, a
 - Order payment uses per-item stock decrement with `$gte` so stock cannot go negative; on failure the order moves to `failed` and any decrements are rolled back.
 - Orders store `subtotalAmount`, `discountCode`, `discountAmount`, and `totalAmount`.
 - Uploaded files land in `uploads/books/` (gitignored).
+
+Integration tests use **Vitest**, **supertest**, and **mongodb-memory-server** (no local Mongo required for most setups).
+
+The memory-server binary is pinned to **MongoDB 7.0.14** (the default 8.2.x build is missing on Windows and returns HTTP 403).
+
+```bash
+npm test
+```
+
+Optional overrides:
+
+```bash
+# force a different memory-server binary
+set MONGOMS_VERSION=7.0.14
+npm test
+
+# or use your installed MongoDB instead of downloading a binary
+set TEST_MONGODB_URI=mongodb://127.0.0.1:27017/bookstore-test
+npm test
+```

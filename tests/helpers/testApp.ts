@@ -8,20 +8,43 @@ export type TestAgent = ReturnType<typeof request>;
 export type TestContext = {
   app: Express;
   request: TestAgent;
-  mongod: MongoMemoryServer;
+  mongod: MongoMemoryServer | null;
   adminToken: string;
   adminRefresh: string;
 };
 
+/** Pinned version known to publish Windows + Linux binaries (avoids MMS default 8.x 403 on Windows). */
+const MEMORY_MONGO_VERSION = process.env.MONGOMS_VERSION ?? '7.0.14';
+
 let shared: TestContext | null = null;
 let refs = 0;
+
+async function startMongo(): Promise<{ uri: string; mongod: MongoMemoryServer | null }> {
+  const externalUri = process.env.TEST_MONGODB_URI?.trim();
+  if (externalUri) {
+    return { uri: externalUri, mongod: null };
+  }
+
+  try {
+    const mongod = await MongoMemoryServer.create({
+      binary: { version: MEMORY_MONGO_VERSION },
+    });
+    return { uri: mongod.getUri(), mongod };
+  } catch (err) {
+    const fallback = 'mongodb://127.0.0.1:27017/bookstore-test';
+    console.warn(
+      `[tests] MongoMemoryServer failed (binary ${MEMORY_MONGO_VERSION}). Falling back to ${fallback}.`,
+      err instanceof Error ? err.message : err,
+    );
+    return { uri: fallback, mongod: null };
+  }
+}
 
 export async function setupTestApp(): Promise<TestContext> {
   refs += 1;
   if (shared) return shared;
 
-  const mongod = await MongoMemoryServer.create();
-  const uri = mongod.getUri();
+  const { uri, mongod } = await startMongo();
   process.env.MONGODB_URI = uri;
 
   // Reconnect if a previous suite left mongoose connected to a dead server
@@ -31,6 +54,11 @@ export async function setupTestApp(): Promise<TestContext> {
 
   mongoose.set('strictQuery', true);
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 10_000 });
+
+  // Isolate external DB runs
+  if (!mongod) {
+    await mongoose.connection.dropDatabase();
+  }
 
   const { runSeed } = await import('../../src/scripts/seed');
   await runSeed({ minimalBooks: true });
@@ -58,12 +86,19 @@ export async function teardownTestApp(): Promise<void> {
   if (refs > 0 || !shared) return;
 
   try {
+    if (!shared.mongod) {
+      await mongoose.connection.dropDatabase();
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
     await mongoose.disconnect();
   } catch {
     /* ignore */
   }
   try {
-    await shared.mongod.stop();
+    if (shared.mongod) await shared.mongod.stop();
   } catch {
     /* ignore */
   }
