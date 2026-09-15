@@ -8,6 +8,7 @@ import {
   refreshSchema,
   logoutSchema,
 } from '../validators/auth.validation';
+import { env } from '../../../infrastructure/config/env';
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -19,7 +20,9 @@ const authLimiter = rateLimit({
 
 const router = Router();
 
-router.use(authLimiter);
+if (env.NODE_ENV !== 'test') {
+  router.use(authLimiter);
+}
 
 router.post('/register', validate({ body: registerSchema }), ctrl.register);
 router.post('/login', validate({ body: loginSchema }), ctrl.login);

@@ -42,7 +42,7 @@ export class MongooseRoleRepository implements IRoleRepository {
 
   async update(id: string, input: UpdateRoleInput): Promise<Role | null> {
     const doc = await RoleModel.findByIdAndUpdate(id, input, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }).populate('permissions');
     return doc ? mapRole(doc) : null;
@@ -61,7 +61,7 @@ export class MongooseRoleRepository implements IRoleRepository {
         description: input.description,
         permissions: input.permissions ?? [],
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
     return mapRole(doc!);
   }

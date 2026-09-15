@@ -30,7 +30,7 @@ export class MongoosePermissionRepository implements IPermissionRepository {
 
   async update(id: string, input: UpdatePermissionInput): Promise<Permission | null> {
     const doc = await PermissionModel.findByIdAndUpdate(id, input, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
     return doc ? mapPermission(doc) : null;
@@ -44,7 +44,7 @@ export class MongoosePermissionRepository implements IPermissionRepository {
   async upsertBySlug(slug: string, input: CreatePermissionInput): Promise<Permission> {
     const doc = await PermissionModel.findOneAndUpdate({ slug }, input, {
       upsert: true,
-      new: true,
+      returnDocument: 'after',
     });
     return mapPermission(doc!);
   }

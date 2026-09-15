@@ -37,7 +37,7 @@ export class MongooseDiscountRepository implements IDiscountRepository {
     const updates: Record<string, unknown> = { ...input };
     if (input.code) updates.code = input.code.toUpperCase();
     const doc = await DiscountModel.findByIdAndUpdate(id, updates, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
     return doc ? mapDiscount(doc) : null;
@@ -47,7 +47,7 @@ export class MongooseDiscountRepository implements IDiscountRepository {
     const doc = await DiscountModel.findByIdAndUpdate(
       id,
       { deletedAt: new Date(), isActive: false },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? mapDiscount(doc) : null;
   }

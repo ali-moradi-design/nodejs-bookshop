@@ -9,7 +9,9 @@
     "start": "node dist/server.js",
     "lint": "eslint \"src/**/*.{ts,js}\"",
     "format": "prettier --write \"src/**/*.{ts,js,json}\" \"*.md\"",
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "bookstore",
@@ -44,12 +46,16 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.6.0",
+    "@types/supertest": "^7.2.1",
     "@types/swagger-ui-express": "^4.1.8",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
+    "mongodb-memory-server": "^11.2.0",
     "prettier": "^3.9.6",
+    "supertest": "^7.2.2",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.70.0"
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^3.2.4"
   }
 }

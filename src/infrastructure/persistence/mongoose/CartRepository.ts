@@ -23,7 +23,7 @@ export class MongooseCartRepository implements ICartRepository {
       {
         items: cart.items.map((i) => ({ bookId: i.bookId, quantity: i.quantity })),
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!doc) throw new Error('Cart not found');
     return mapCart(doc);
@@ -36,7 +36,7 @@ export class MongooseCartRepository implements ICartRepository {
         items: items.map((i) => ({ bookId: i.bookId, quantity: i.quantity })),
         $setOnInsert: { userId },
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true },
     );
     return mapCart(doc!);
   }
@@ -45,7 +45,7 @@ export class MongooseCartRepository implements ICartRepository {
     const doc = await CartModel.findOneAndUpdate(
       { userId },
       { items: [] },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? mapCart(doc) : null;
   }

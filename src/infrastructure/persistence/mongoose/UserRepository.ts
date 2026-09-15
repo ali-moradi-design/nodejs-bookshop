@@ -58,7 +58,7 @@ export class MongooseUserRepository implements IUserRepository {
     const updates: Record<string, unknown> = { ...input };
     if (input.email) updates.email = input.email.toLowerCase();
     const doc = await UserModel.findByIdAndUpdate(id, updates, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }).populate('roles');
     if (!doc) return null;
@@ -71,7 +71,7 @@ export class MongooseUserRepository implements IUserRepository {
     const doc = await UserModel.findByIdAndUpdate(
       id,
       { deletedAt: new Date(), isActive: false },
-      { new: true },
+      { returnDocument: 'after' },
     );
     return doc ? mapUser(doc) : null;
   }

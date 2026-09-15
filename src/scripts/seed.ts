@@ -434,10 +434,12 @@ const SEED_BOOKS: {
   },
 ];
 
-async function seed() {
-  await connectDb();
-  console.log('Seeding...');
+export type SeedOptions = {
+  /** When true, seed only a handful of books (for automated tests). */
+  minimalBooks?: boolean;
+};
 
+export async function runSeed(options: SeedOptions = {}): Promise<void> {
   const passwordHasher = new BcryptPasswordHasher();
 
   const defs = basePermissions();
@@ -445,7 +447,6 @@ async function seed() {
     await repos.permissions.upsertBySlug(def.slug, def);
   }
   const allPerms = await repos.permissions.list();
-  console.log(`Permissions: ${allPerms.length}`);
 
   const adminRole = await repos.roles.upsertByName('admin', {
     name: 'admin',
@@ -456,13 +457,11 @@ async function seed() {
   const customerPermIds = allPerms
     .filter((p) => CUSTOMER_SLUGS.includes(p.slug))
     .map((p) => p.id);
-  const customerRole = await repos.roles.upsertByName('customer', {
+  await repos.roles.upsertByName('customer', {
     name: 'customer',
     description: 'Default customer role',
     permissions: customerPermIds,
   });
-
-  console.log(`Roles: admin=${adminRole.id}, customer=${customerRole.id}`);
 
   const passwordHash = await passwordHasher.hash('Admin123!');
   const existingAdmin = await repos.users.findByEmail('admin@bookstore.local');
@@ -482,14 +481,14 @@ async function seed() {
       isActive: true,
     });
   }
-  console.log('Admin user: admin@bookstore.local / Admin123!');
 
-  if (SEED_BOOKS.length !== 40) {
+  const booksToSeed = options.minimalBooks ? SEED_BOOKS.slice(0, 5) : SEED_BOOKS;
+  if (!options.minimalBooks && SEED_BOOKS.length !== 40) {
     throw new Error(`Expected exactly 40 seed books, got ${SEED_BOOKS.length}`);
   }
 
   let featuredOrder = 1;
-  for (const b of SEED_BOOKS) {
+  for (const b of booksToSeed) {
     const featured = FEATURED_ISBNS.has(b.isbn);
     await repos.books.upsertByIsbn(b.isbn, {
       ...b,
@@ -500,10 +499,6 @@ async function seed() {
     });
   }
 
-  const bookCount = await repos.books.count();
-  console.log(`Books upserted by ISBN: ${SEED_BOOKS.length} (catalog count: ${bookCount}); featured: ${FEATURED_ISBNS.size}`);
-
-  // Sample discount codes
   const sampleDiscounts = [
     {
       code: 'WELCOME10',
@@ -528,13 +523,28 @@ async function seed() {
       await repos.discounts.create(d);
     }
   }
-  console.log('Sample discounts: WELCOME10 (10%), FLAT5 ($5)');
+}
 
+async function main() {
+  await connectDb();
+  console.log('Seeding...');
+  await runSeed();
+  const bookCount = await repos.books.count();
+  console.log(`Books upserted (catalog count: ${bookCount}); featured: ${FEATURED_ISBNS.size}`);
+  console.log('Admin user: admin@bookstore.local / Admin123!');
+  console.log('Sample discounts: WELCOME10 (10%), FLAT5 ($5)');
   console.log('Seed complete.');
   process.exit(0);
 }
 
-seed().catch((err) => {
-  console.error('Seed failed:', err);
-  process.exit(1);
-});
+// Only auto-run when executed as CLI (`npm run seed` / `tsx src/scripts/seed.ts`)
+const isCli =
+  typeof process.argv[1] === 'string' &&
+  (process.argv[1].endsWith('scripts/seed.ts') || process.argv[1].endsWith('scripts/seed.js'));
+
+if (isCli) {
+  main().catch((err) => {
+    console.error('Seed failed:', err);
+    process.exit(1);
+  });
+}

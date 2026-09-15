@@ -19,16 +19,20 @@ app.use(
   }),
 );
 app.use(express.json({ limit: '1mb' }));
-app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+if (env.NODE_ENV !== 'test') {
+  app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+}
 
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 300,
-    standardHeaders: true,
-    legacyHeaders: false,
-  }),
-);
+if (env.NODE_ENV !== 'test') {
+  app.use(
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }),
+  );
+}
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

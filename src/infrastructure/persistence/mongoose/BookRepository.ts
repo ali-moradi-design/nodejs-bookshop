@@ -84,12 +84,12 @@ export class MongooseBookRepository implements IBookRepository {
   }
 
   async update(id: string, input: UpdateBookInput): Promise<Book | null> {
-    const doc = await BookModel.findByIdAndUpdate(id, input, { new: true, runValidators: true });
+    const doc = await BookModel.findByIdAndUpdate(id, input, { returnDocument: 'after', runValidators: true });
     return doc ? mapBook(doc) : null;
   }
 
   async softDelete(id: string): Promise<Book | null> {
-    const doc = await BookModel.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
+    const doc = await BookModel.findByIdAndUpdate(id, { deletedAt: new Date() }, { returnDocument: 'after' });
     return doc ? mapBook(doc) : null;
   }
 
@@ -111,7 +111,7 @@ export class MongooseBookRepository implements IBookRepository {
   ): Promise<Book> {
     const doc = await BookModel.findOneAndUpdate({ isbn }, data, {
       upsert: true,
-      new: true,
+      returnDocument: 'after',
       setDefaultsOnInsert: true,
     });
     return mapBook(doc!);

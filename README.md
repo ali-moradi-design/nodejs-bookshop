@@ -28,6 +28,7 @@ src/
 - bcryptjs, jsonwebtoken, dotenv, cors, morgan
 - swagger-ui-express (OpenAPI at `/api/docs`)
 - ESLint + Prettier, tsx for dev
+- Vitest + supertest + mongodb-memory-server (integration tests)
 
 ## Setup
 
@@ -86,6 +87,8 @@ Dedicated: `GET /api/v1/books/featured`.
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier |
 | `npm run seed` | permissions, roles, admin, 40 imaged books, discounts |
+| `npm test` | Vitest + supertest integration suite (in-memory MongoDB) |
+| `npm run test:watch` | Vitest watch mode |
 
 ## Key routes
 
@@ -165,6 +168,19 @@ curl -s -X POST http://localhost:4000/api/v1/favorites \
 curl -s http://localhost:4000/api/v1/admin/dashboard/summary \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+
+## Testing
+
+Integration tests use **Vitest**, **supertest**, and **mongodb-memory-server** (no local Mongo required).
+
+```bash
+npm test
+# or
+npm run test:watch
+```
+
+The suite boots an in-memory MongoDB, runs a minimal seed (permissions, roles, admin, a few books, `WELCOME10`), and exercises HTTP flows against the real Express app (`src/app.ts`). JWT secrets and other env vars are set in `tests/setup-env.ts` — do not rely on `.env` for CI.
 
 ## Env
 
