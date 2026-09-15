@@ -13,3 +13,6 @@ process.env.ACCESS_TOKEN_TTL = '15m';
 process.env.REFRESH_TOKEN_TTL = '7d';
 process.env.CORS_ORIGIN = '*';
 process.env.UPLOAD_DIR = 'uploads';
+process.env.COOKIE_SECURE = 'false';
+process.env.COOKIE_SAME_SITE = 'lax';
+
