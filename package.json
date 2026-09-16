@@ -1,5 +1,5 @@
 {
-  "name": "nodejs-bookshop",
+  "name": "nodejs-bookshop-ddd-mongodb",
   "version": "1.0.0",
   "description": "Bookstore backend API with auth, RBAC, orders, reviews, and reports",
   "main": "dist/server.js",
